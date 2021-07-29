@@ -1,0 +1,184 @@
+#include <stdio.h>
+#include <conio.h>
+#include <windows.h>
+
+HANDLE hout;   //设置句柄
+char a[50][100]= {0};   //设置全局字符数组，存储屏幕字符
+int I, J, K;    //I,J为数组参数，K为I的记录值
+
+void menu();    //显示功能菜单
+void read_file();    //读取文件
+char printing();     //打印文件到屏幕中
+void display_input();     //将用户输入打印到屏幕中
+char get_input();	//获取用户输入
+void save();   //将屏幕中的字符存入文件中
+
+int main()  //主函数
+{
+    menu();
+    read_file();
+    printing();
+    display_input();
+}
+
+void menu()   //显示功能菜单,提示功能按键
+{
+    printf("----------------------------------------------\n");
+    printf("欢迎来到文本编辑器，开始你的编辑吧！\n");
+    printf("ctrl+A 可存储并关闭文件\n");
+    printf("ctrl+B 可存储文件\n");
+    printf("ctrl+C 可关闭文件\n");
+    printf("上下左右可移动光标\n");
+    printf("空格可删除字符\n");
+    printf("----------------------------------------------\n");
+}
+
+void read_file()    //读取文件
+{
+    FILE *fp;  //创建一个文件指针*fp
+    char ch;
+    int i=0, j=0;
+    fp=fopen("book.txt","r");   //以读写方式打开当前目录下的文件
+    if(fp==NULL)
+        printf("can not open!\n");  //如果fp指针指向为空，即文件为空，则输出can not open
+    else
+    {
+        fscanf(fp,"%c",&ch);   //读取字符
+        while(!feof(fp))      //feof（）这个函数是用来判断指针是否已经到达文件尾部
+        {
+            if(ch!='\n')   //判断是否要换行
+            {
+                a[i][j]=ch;  //将文件信息存储到字符数组里
+                j++;
+            }
+            else    //换行操作
+            {
+                i++;    
+                j=0;
+            }
+            K=i;   //记录K值
+            fscanf(fp,"%c",&ch);   //再次读取字符
+        }
+        fclose(fp);   //关闭文件
+    }
+    for(int i=5; i>0; i--)   //为了界面美观
+    {
+        system("cls");  //清屏
+        menu();
+        printf("\n\n\n");
+        printf("文件读取完成！\n");
+        printf("即将开始打印！\n");
+        printf("(%d秒后跳出)",i);
+        Sleep(1000);   //睡眠
+    }
+    system("cls");
+    return 0;
+}
+
+char printing()    //打印文件到屏幕中
+{
+    int i, j;
+    for(i=0; i<K; i++)
+    {
+        for(j=0; j<50; j++)
+        {
+            printf("%c", a[i][j]);
+        }
+        printf("\n");  //换行，将二维数组整齐复制到屏幕中
+    }
+}
+
+void display_input()   //将用户输入打印到屏幕中
+{
+    char ch;
+    hout = GetStdHandle(STD_OUTPUT_HANDLE);		//获取标准输出设备的句柄
+    while (1)
+    {
+        ch = get_input();
+        if(ch==1)   //保存并关闭
+        {
+            save();
+            exit(0);
+        }
+        else if(ch==2)  //保存
+            save();
+        else if(ch==3)  //关闭
+            exit(0);
+        else
+        {
+            printf("%c", ch);  //输出键盘字符
+            a[I][J]=ch;  //显示的同时存入字符数组中
+        }
+    }
+}
+
+char get_input()  //函数返回每个按键的键值
+{
+    int ch;			//输入字符串
+    COORD coord;	//设置屏幕上的坐标
+    CONSOLE_SCREEN_BUFFER_INFO csbi;	//控制台屏幕缓冲区信息
+    GetConsoleScreenBufferInfo(hout, &csbi);	//获取屏幕缓冲的光标位置,然后把当前光标位置赋给COORD
+    coord.X = csbi.dwCursorPosition.X;			//得到坐标x的值
+    coord.Y = csbi.dwCursorPosition.Y;			//y值
+    ch = _getch();	//不带回显，不需要按回车，和getch一样，微软把函数统一为了下划线开头的
+    //0X0D表示回车的键码，0XE0表示上下左右键的键码
+    while (ch == 0XE0 || ch == 0X0D)
+    {
+        GetConsoleScreenBufferInfo(hout, &csbi);	//获取屏幕缓冲的光标位置,然后把当前光标位置赋给COORD
+        coord.X = csbi.dwCursorPosition.X;			//得到坐标x的值
+        coord.Y = csbi.dwCursorPosition.Y;			//y值
+        if (ch == 0X0D)//回车
+        {
+            coord.X = 0;
+            coord.Y++;
+            SetConsoleCursorPosition(hout, coord);	//在输出设备上定位光标
+            break;
+        }
+        ch = _getch();	//回车键换行之后可以继续输入，如果上面输入的就是方向键的话，这句就会被跳过
+        if (ch == 0x48)//上
+        {
+            if (coord.Y != 0)
+                coord.Y--;
+        }
+        else if (ch == 0x50)//下
+        {
+            coord.Y++;
+        }
+        else if (ch == 0x4b)//左
+        {
+            if (coord.X != 0)
+                coord.X--;
+        }
+        else if(ch == 0x4d)//右
+        {
+            if (coord.X != 50)//向右写50个字换行
+                coord.X++;
+            else
+            {
+                coord.X = 0;
+                coord.Y++;
+            }
+        }
+        SetConsoleCursorPosition(hout, coord);//定位光标
+        ch = _getch();	//继续输入,防止跳出while，输出方向键键值对应的字符
+    }
+    J=coord.X;  //通过光标坐标确定J值
+    I=coord.Y;  //通过光标坐标确定I值
+    if(K<I)
+        K=I;    //记录K值
+    return ch;	//普通按键就返回键值，输出对应的字符
+}
+
+void save()   //存储函数
+{
+    FILE *fp;  //文件指针
+    int i;
+    if((fp=fopen("book.txt", "w"))==NULL)  //执行写文件操作
+        printf("文件打开失败！\n");
+    for(i=0; i<=K; i++)
+    {
+        fprintf(fp,"%s\n", a[i]);  //一行一行写入
+    }
+    fclose(fp);  //关闭文件
+    printf("\n保存成功!");  //提示保存成功
+}
